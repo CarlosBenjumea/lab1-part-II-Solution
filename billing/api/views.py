@@ -1,0 +1,60 @@
+from rest_framework import serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
+from django_filters.rest_framework import DjangoFilterBackend
+
+from ..models import Provider, Barrel, Invoice
+from .serializers import (
+    ProviderSerializer,
+    BarrelSerializer,
+    InvoiceSerializer,
+    InvoiceLineNestedSerializer,
+    InvoiceLineCreateSerializer,
+)
+from .filters import InvoiceFilter
+
+
+class ProviderViewSet(viewsets.ModelViewSet):
+    queryset = Provider.objects.all().order_by("id")
+    serializer_class = ProviderSerializer
+
+
+class BarrelViewSet(viewsets.ModelViewSet):
+    queryset = Barrel.objects.select_related("provider").all().order_by("id")
+    serializer_class = BarrelSerializer
+    # Requirement: barrels endpoint without filters on billed/unbilled
+    filter_backends = []
+
+
+class InvoiceViewSet(viewsets.ModelViewSet):
+    queryset = Invoice.objects.prefetch_related("lines").all().order_by("-issued_on", "-id")
+    serializer_class = InvoiceSerializer
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = InvoiceFilter
+
+    def get_serializer_class(self):
+        if self.action == "add_line":
+            return InvoiceLineCreateSerializer
+        return super().get_serializer_class()
+
+    @extend_schema(
+        request=InvoiceLineCreateSerializer,
+        responses={201: InvoiceLineNestedSerializer},
+    )
+    @action(detail=True, methods=["post"], url_path="add-line")
+    def add_line(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        serializer = InvoiceLineCreateSerializer(
+            data=request.data,
+            context={"invoice": invoice},
+        )
+        serializer.is_valid(raise_exception=True)
+        try:
+            line = serializer.save()
+        except ValueError as exc:
+            raise serializers.ValidationError({"detail": str(exc)})
+
+        output = InvoiceLineNestedSerializer(line)
+        return Response(output.data, status=status.HTTP_201_CREATED)
