@@ -6,7 +6,6 @@ from ..models import Provider, Barrel, Invoice, InvoiceLine
 class ProviderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Provider
-        # Añadimos la coma y el nuevo campo al final
         fields = ["id", "name", "address", "tax_id", "has_barrels_to_bill"]
 
 
