@@ -46,6 +46,8 @@ class Invoice(models.Model):
         unit_price_per_liter: Decimal,
         description: str,
     ) -> "InvoiceLine":
+        if barrel.billed:
+            raise ValueError("The barrel is already billed.")
         if liters <= 0:
             raise ValueError("liters must be > 0")
         if unit_price_per_liter <= 0:
