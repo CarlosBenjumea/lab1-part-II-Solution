@@ -2,8 +2,16 @@ from decimal import Decimal
 from rest_framework import serializers
 from ..models import Provider, Barrel, Invoice, InvoiceLine
 
+class BarrelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Barrel
+        fields = ["id", "provider", "number", "oil_type", "liters", "billed"]
+
 
 class ProviderSerializer(serializers.ModelSerializer):
+
+    billed_barrels = serializers.SerializerMethodField()
+    barrels_to_bill = serializers.SerializerMethodField()
 
     barrel_ids = serializers.PrimaryKeyRelatedField(
         source="barrels",
@@ -13,16 +21,16 @@ class ProviderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Provider
-        fields = ["id", "name", "address", "tax_id", "barrel_ids"]
+        fields = ["id", "name", "address", "tax_id","barrel_ids", "billed_barrels", "barrels_to_bill"]
+        fields = ["id", "name", "address", "tax_id","liters_to_bill", "billed_barrels", "barrels_to_bill"]
+    
+    def get_billed_barrels(self, obj: Provider):
+        barrels = obj.barrels.filter(billed=True)
+        return BarrelSerializer(barrels, many=True).data
 
-        fields = ["id", "name", "address", "tax_id", "liters_to_bill"]
-
-
-class BarrelSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Barrel
-        fields = ["id", "provider", "number", "oil_type", "liters", "billed"]
-
+    def get_barrels_to_bill(self, obj: Provider):
+        barrels = obj.barrels.filter(billed=False)
+        return BarrelSerializer(barrels, many=True).data
 
 class InvoiceLineNestedSerializer(serializers.ModelSerializer):
     # Requirement: return invoice lines WITHOUT the barrel object included.
