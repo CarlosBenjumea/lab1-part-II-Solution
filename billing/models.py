@@ -32,6 +32,12 @@ class Barrel(models.Model):
 
 
 class Invoice(models.Model):
+    provider = models.ForeignKey(
+        Provider,
+        related_name="invoices",
+        on_delete=models.CASCADE
+    )    
+    
     invoice_no = models.CharField(max_length=64, unique=True)
     issued_on = models.DateField()
 
@@ -56,7 +62,10 @@ class Invoice(models.Model):
         # Business rule from the prompt:
         if barrel.liters != liters:
             raise ValueError("liters must equal barrel.liters to bill the full barrel")
-
+        
+        if barrel.provider != self.provider:
+            raise ValueError("Barrel does not belong to this invoice provider.")
+        
         new_line = InvoiceLine.objects.create(
             invoice=self,
             barrel=barrel,
@@ -64,6 +73,7 @@ class Invoice(models.Model):
             unit_price=unit_price_per_liter,
             description=description,
         )
+    
         barrel.billed = True
         barrel.save(update_fields=["billed"])
         return new_line
