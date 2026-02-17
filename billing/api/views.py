@@ -29,9 +29,10 @@ class BarrelViewSet(viewsets.ModelViewSet):
 
 
 class InvoiceViewSet(viewsets.ModelViewSet):
-    queryset = Invoice.objects.prefetch_related("lines").all().order_by("-issued_on", "-id")
+    queryset = Invoice.objects.prefetch_related("lines").distinct().order_by("-issued_on", "-id")
     serializer_class = InvoiceSerializer
 
+    serializer_class = InvoiceSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = InvoiceFilter
 
